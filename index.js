@@ -1,3 +1,4 @@
+// http://127.0.0.1:8080/
 async function getData(url) {
     // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
     const response = await fetch(url, {
@@ -10,12 +11,42 @@ async function getData(url) {
     return response.json();
 }
 
-async function loadCountriesData() {
-    const countries = await getData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
+async function loadCountriesData(repeat = 3) {
+    // repeat - количество повторов функции
+    let countries;
+    let error = 0;
+    try {
+        countries = await getData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
+    } catch (err) {
+        error = 1; // Тут предполагается сетевая (физическая) ошибка
+    }
+    if (!error && !countries.length) {
+        error = 2; // Тут логическая ошибка (какую-то фигню получили)
+    }
+    if (error && repeat > 0) {
+        countries = await loadCountriesData(repeat-1);
+    }
+    if (!countries || !countries.length) {
+        // eslint-disable-next-line consistent-return
+        return [];
+    }
+    return countries;
+}
+
+async function loadCountriesData2() {
+    if (localStorage.hasOwnProperty('countriesList')) {
+        // Если есть в кэше есть список стран, то сразу возвращаем
+        return JSON.parse(localStorage.getItem('countriesList'));
+    }
+    const countries = await loadCountriesData();
+    if (!countries || !countries.length) {
+        return [];
+    }
     const ret = countries.reduce((result, country) => {
         result[country.cca3] = country;
         return result;
     }, {});
+    // Кешировал
     localStorage.setItem('countriesList', JSON.stringify(ret));
     return ret;
 }
@@ -70,11 +101,13 @@ const mainArray = new Map(); // Основная мапа перебора ст�
 
     output.textContent = 'Loading…';
     // Берём из хранилища или скачиваем с сервера
-    const countriesData = localStorage.hasOwnProperty('countriesList')
-        ? JSON.parse(localStorage.getItem('countriesList'))
-        : await loadCountriesData();
-    output.textContent = '';
+    const countriesData = await loadCountriesData2();
+    if (!countriesData) {
+        output.innerHTML = "Fatal error: countries can't be loading... <a href='/'>Try again (F5)</a>";
+        return;
+    }
 
+    output.textContent = '';
     // Заполняем список стран для подсказки в инпутах
     Object.keys(countriesData)
         .sort((a, b) => countriesData[b].area - countriesData[a].area)
@@ -91,7 +124,7 @@ const mainArray = new Map(); // Основная мапа перебора ст�
     submit.disabled = false;
     clearCache.disabled = false;
 
-    console.clear();
+    // console.clear();
 
     clearCache.addEventListener('click', async (event) => {
         countryBorder.clear();
@@ -142,7 +175,7 @@ const mainArray = new Map(); // Основная мапа перебора ст�
         submit.disabled = true;
         clearCache.disabled = true;
 
-        output.innerHTML = `Calculate route from <b>${from}</b> (${fromCode}) to <b>${to}</b> (${toCode})<br>`;
+        output.innerHTML = `Calculating route from <b>${from}</b> (${fromCode}) to <b>${to}</b> (${toCode}). Please wait...<br>`;
 
         mainArray.clear(); // Обязательно начинаем маршрут с чистого листа
         mainArray.set(fromCode, fromCode); // Родитель отсутствует (мы начали с него)
