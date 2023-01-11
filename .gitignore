@@ -29,6 +29,3 @@ Desktop.ini
 node_modules
 yarn-error.log
 npm-debug.log
-
-githooks
-node_modules
