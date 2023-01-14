@@ -1,4 +1,4 @@
-async function getData(url) {
+async function GetData(url) {
     // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
     const response = await fetch(url, {
         method: 'GET',
@@ -10,18 +10,19 @@ async function getData(url) {
     return response.json();
 }
 
-async function loadCountriesData(repeat = 3) {
+async function LoadCountriesData(repeat = 3) {
     // repeat - количество повторов функции
     try {
         // Если без сетевых ошибок, то сразу возвращаем
-        return await getData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
+        return await GetData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
     } catch (err) {
         // Если сетевая ошибка то вызываем повторно
         if (repeat > 0) {
             // eslint-disable-next-line no-return-await
-            return await loadCountriesData(repeat - 1);
+            return await LoadCountriesData(repeat - 1);
         }
-        return {}; // Превысили лимит ошибок, возвращаем пустой объект
+        // eslint-disable-next-line no-throw-literal
+        throw 'Countries load error'; // Превысили лимит ошибок
     }
 }
 
@@ -30,8 +31,8 @@ async function GetCountriesData() {
         // Если есть в кэше есть список стран, то сразу возвращаем
         return JSON.parse(localStorage.getItem('countriesList'));
     }
-    const countries = await loadCountriesData();
-    if (!countries.length) {
+    const countries = await LoadCountriesData();
+    if (!Array.isArray(countries) || !countries.length) {
         return {};
     }
     const ret = countries.reduce((result, country) => {
@@ -43,14 +44,14 @@ async function GetCountriesData() {
     return ret;
 }
 
-const counrtyMap = new Map(); // Для перекодирования кода в название
+const countryMap = new Map(); // Для перекодирования кода в название
 const countryBorder = localStorage.hasOwnProperty('countryBorder') // Какие страны с какими граничат
     ? new Map(Object.entries(JSON.parse(localStorage.getItem('countryBorder'))))
     : new Map();
 
 async function loadCountryBorders(counryCode, repeat = 3) {
     try {
-        const data = await getData(`https://restcountries.com/v3/alpha/${counryCode}?fields=borders`);
+        const data = await GetData(`https://restcountries.com/v3/alpha/${counryCode}?fields=borders`);
         if (!data.borders) {
             return {}; // Произошла логическая ошибка
         }
@@ -61,12 +62,13 @@ async function loadCountryBorders(counryCode, repeat = 3) {
             // eslint-disable-next-line no-return-await
             return await loadCountryBorders(counryCode, repeat - 1);
         }
-        return {}; // Превышен лимит сетевых ошибок
+        // eslint-disable-next-line no-throw-literal
+        throw 'Border load error'; // Превысили лимит ошибок
     }
 }
 
 async function GetBorders(counryCode) {
-    if (!counrtyMap.has(counryCode)) {
+    if (!countryMap.has(counryCode)) {
         return {}; // У невалидной страны нету границ
     }
     if (countryBorder.has(counryCode)) {
@@ -100,7 +102,7 @@ const submit = document.getElementById('submit');
 const clearCache = document.getElementById('clearCache');
 const output = document.getElementById('output');
 const msgShowTime = 2000; // Время показа сообщения, ms
-const counrtyMapReverce = new Map(); // Для перекодирования названия в код
+const countryMapReverce = new Map(); // Для перекодирования названия в код
 const mainArray = new Map(); // Основная мапа перебора стран, формат код_куда => код откуда
 const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
 
@@ -112,9 +114,15 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
 
     output.textContent = 'Loading…';
     // Берём из хранилища или скачиваем с сервера
-    const countriesData = await GetCountriesData();
-    if (!countriesData) {
-        output.innerHTML = "Fatal error: countries can't be loading... <a href='/'>Try again (F5)</a>";
+    let countriesData = {};
+    try {
+        countriesData = await GetCountriesData();
+    } catch (err) {
+        output.innerHTML = "<b style='color:red;'>Fatal error</b>: countries can't be loading... <a href='/'>Try again (F5)</a>";
+        return;
+    }
+    if (!Object.keys(countriesData).length) {
+        output.innerHTML = "<b style='color:red;'>Fatal error</b>: no countries is loading... <a href='/'>Try again (F5)</a>";
         return;
     }
 
@@ -126,8 +134,8 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
             const option = document.createElement('option');
             option.value = countriesData[code].name.common;
             countriesList.appendChild(option);
-            counrtyMap.set(code, countriesData[code].name.common); // Формируем словарь кодов стран
-            counrtyMapReverce.set(countriesData[code].name.common, code); // Формируем реверсивный словарь кодов стран
+            countryMap.set(code, countriesData[code].name.common); // Формируем словарь кодов стран
+            countryMapReverce.set(countriesData[code].name.common, code); // Формируем реверсивный словарь кодов стран
         });
 
     fromCountry.disabled = false;
@@ -157,7 +165,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
             MsgAndHide('Error: from country is not set');
             return;
         }
-        if (!counrtyMapReverce.has(from)) {
+        if (!countryMapReverce.has(from)) {
             MsgAndHide('Error: from country is not valid');
             return;
         }
@@ -167,7 +175,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
             MsgAndHide('Error: to country is not set');
             return;
         }
-        if (!counrtyMapReverce.has(to)) {
+        if (!countryMapReverce.has(to)) {
             MsgAndHide('Error: to country is not valid');
             return;
         }
@@ -178,8 +186,8 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
             return;
         }
 
-        const fromCode = counrtyMapReverce.get(from);
-        const toCode = counrtyMapReverce.get(to);
+        const fromCode = countryMapReverce.get(from);
+        const toCode = countryMapReverce.get(to);
 
         fromCountry.disabled = true;
         toCountry.disabled = true;
@@ -197,7 +205,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
         // Обход лабиринта по левой стенке
         for (const [currentCountry, value] of mainArray) {
             // eslint-disable-next-line no-plusplus
-            if (++mainPointer > 150) {
+            if (++mainPointer > countryMap.size) {
                 // Максимум стран, для исключения зацикливания
                 error = Errors.OverfolwError;
                 break;
@@ -212,8 +220,18 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
             if (mainArray.size >= mainPointer) {
                 // eslint-disable-next-line no-plusplus
                 queryCount++;
-                // eslint-disable-next-line no-await-in-loop
-                const borders = await GetBorders(currentCountry);
+                let borders = [];
+                try {
+                    // eslint-disable-next-line no-await-in-loop
+                    borders = await GetBorders(currentCountry);
+                } catch {
+                    output.innerHTML += "<b style='color:red;'>Fatal error</b>: country borders can't be loading... Try later";
+                    fromCountry.disabled = false;
+                    toCountry.disabled = false;
+                    submit.disabled = false;
+                    clearCache.disabled = false;
+                    return;
+                }
                 // Из-за ошибки (например сетевой) стран может и не быть, проверяем
                 if (borders.length) {
                     for (const border of borders) {
@@ -230,9 +248,9 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
             const route = [from];
             let end = toCode;
             while (end !== fromCode) {
-                route.push(counrtyMap.get(end));
+                route.push(countryMap.get(end));
                 end = mainArray.get(end);
-                if (route.length > 100) {
+                if (route.length > countryMap.size) {
                     break; // Ловит внутренние ошибки программы
                 }
             }
