@@ -1,4 +1,4 @@
-async function GetData(url) {
+async function getData(url) {
     // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
     const response = await fetch(url, {
         method: 'GET',
@@ -10,28 +10,28 @@ async function GetData(url) {
     return response.json();
 }
 
-async function LoadCountriesData(repeat = 3) {
+async function loadCountriesData(repeat = 3) {
     // repeat - количество повторов функции
     try {
         // Если без сетевых ошибок, то сразу возвращаем
-        return await GetData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
+        return await getData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
     } catch (err) {
         // Если сетевая ошибка то вызываем повторно
         if (repeat > 0) {
             // eslint-disable-next-line no-return-await
-            return await LoadCountriesData(repeat - 1);
+            return await loadCountriesData(repeat - 1);
         }
         // eslint-disable-next-line no-throw-literal
         throw 'Countries load error'; // Превысили лимит ошибок
     }
 }
 
-async function GetCountriesData() {
+async function getCountriesData() {
     if (localStorage.hasOwnProperty('countriesList')) {
         // Если есть в кэше есть список стран, то сразу возвращаем
         return JSON.parse(localStorage.getItem('countriesList'));
     }
-    const countries = await LoadCountriesData();
+    const countries = await loadCountriesData();
     if (!Array.isArray(countries) || !countries.length) {
         return {};
     }
@@ -51,7 +51,7 @@ const countryBorder = localStorage.hasOwnProperty('countryBorder') // Какие
 
 async function loadCountryBorders(counryCode, repeat = 3) {
     try {
-        const data = await GetData(`https://restcountries.com/v3/alpha/${counryCode}?fields=borders`);
+        const data = await getData(`https://restcountries.com/v3/alpha/${counryCode}?fields=borders`);
         if (!data.borders) {
             return {}; // Произошла логическая ошибка
         }
@@ -67,7 +67,7 @@ async function loadCountryBorders(counryCode, repeat = 3) {
     }
 }
 
-async function GetBorders(counryCode) {
+async function getBorders(counryCode) {
     if (!countryMap.has(counryCode)) {
         return {}; // У невалидной страны нету границ
     }
@@ -116,7 +116,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
     // Берём из хранилища или скачиваем с сервера
     let countriesData = {};
     try {
-        countriesData = await GetCountriesData();
+        countriesData = await getCountriesData();
     } catch (err) {
         output.innerHTML = "<b style='color:red;'>Fatal error</b>: countries can't be loading... <a href='/'>Try again (F5)</a>";
         return;
@@ -148,7 +148,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
     clearCache.addEventListener('click', async (event) => {
         countryBorder.clear();
         localStorage.removeItem('countryBorder');
-        MsgAndHide('Cache is cleared');
+        msgAndHide('Cache is cleared');
     });
 
     form.addEventListener('submit', async (event) => {
@@ -162,27 +162,27 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
         const from = fromCountry.value;
         // Проверка заполненности откуда
         if (!from) {
-            MsgAndHide('Error: from country is not set');
+            msgAndHide('Error: from country is not set');
             return;
         }
         if (!countryMapReverce.has(from)) {
-            MsgAndHide('Error: from country is not valid');
+            msgAndHide('Error: from country is not valid');
             return;
         }
         const to = toCountry.value;
         // Проверка заполненности куда
         if (!to) {
-            MsgAndHide('Error: to country is not set');
+            msgAndHide('Error: to country is not set');
             return;
         }
         if (!countryMapReverce.has(to)) {
-            MsgAndHide('Error: to country is not valid');
+            msgAndHide('Error: to country is not valid');
             return;
         }
         // Проверка на одно и то же
         // eslint-disable-next-line eqeqeq
         if (from == to) {
-            MsgAndHide('Error: from country and to country are equal');
+            msgAndHide('Error: from country and to country are equal');
             return;
         }
 
@@ -223,7 +223,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
                 let borders = [];
                 try {
                     // eslint-disable-next-line no-await-in-loop
-                    borders = await GetBorders(currentCountry);
+                    borders = await getBorders(currentCountry);
                 } catch {
                     output.innerHTML += "<b style='color:red;'>Fatal error</b>: country borders can't be loading... Try later";
                     fromCountry.disabled = false;
@@ -270,7 +270,7 @@ const Errors = Enum({ NoError: 0, NotFoundError: 1, OverfolwError: 2 });
         clearCache.disabled = false;
     });
 
-    function MsgAndHide(txt) {
+    function msgAndHide(txt) {
         output.textContent = txt;
         setTimeout(() => (output.textContent = ''), msgShowTime);
     }
