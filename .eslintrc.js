@@ -7,9 +7,6 @@ module.exports = {
         node: true,
         es2022: true,
     },
-    parserOptions: {
-        sourceType: 'module',
-    },
     rules: {
         'prettier/prettier': 'error',
         'accessor-pairs': 'off',

@@ -1,5 +1,6 @@
-<html>
+<html lang="ru">
 <head>
+    <meta charset="UTF-8">
     <title>JS Part 1 Homework</title>
     <link href="//cdn.muicss.com/mui-0.10.3/css/mui.min.css" rel="stylesheet" type="text/css" />
     <link href="index.css" rel="stylesheet" type="text/css" />
@@ -14,6 +15,8 @@
                     type="text"
                     id="fromCountry"
                     list="countriesList"
+                    value="South Africa"
+                    value2="Belgium"
                 />
                 <label>From</label>
             </div>
@@ -22,6 +25,8 @@
                     type="text"
                     id="toCountry"
                     list="countriesList"
+                    value="Thailand"
+                    value2="Canada"
                 />
                 <label>To</label>
             </div>
@@ -32,11 +37,18 @@
             >
                 Go
             </button>
+            <button
+                type="button"
+                id="clearCache"
+                class="mui-btn mui-btn--primary"
+            >
+                Clear cache
+            </button>            
         </form>
 
         <div id="output" class="mui--text-body1"></div>
     </div>
     <script src="//cdn.muicss.com/mui-0.10.3/js/mui.min.js"></script>
-    <script type="module" src="index.js"></script>
+    <script src="index.js"></script>
 </body>
 </html>
